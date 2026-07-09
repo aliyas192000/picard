@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PiCard — Digital Business Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<style>
+  :root{
+    --navy-deep:#161B33;
+    --navy-card:#1F2547;
+    --navy-card-2:#252b52;
+    --gold:#C8A24D;
+    --gold-soft:#E4C77A;
+    --cream:#F6F2E9;
+    --teal:#3A8577;
+    --ink:#14151A;
+    --line:rgba(246,242,233,0.10);
+    --accent: var(--gold);
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:transparent;}
+  body{
+    font-family:'Inter', sans-serif;
+    color:var(--cream);
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .phone{
+    width:100%;
+    max-width:400px;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(200,162,77,0.08), transparent 45%),
+      radial-gradient(circle at 90% 15%, rgba(58,133,119,0.10), transparent 40%),
+      var(--navy-deep);
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(200,162,77,0.08), transparent 45%),
+      radial-gradient(circle at 90% 15%, rgba(58,133,119,0.10), transparent 40%),
+      radial-gradient(rgba(246,242,233,0.05) 1px, transparent 1px),
+      var(--navy-deep);
+    background-size: auto, auto, 18px 18px, auto;
+    padding: 28px 20px 100px;
+    position:relative;
+  }
+
+  /* ---------- header ---------- */
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 22px;
+  }
+  .brand-mark{
+    width:34px;height:34px;border-radius:50%;
+    background: linear-gradient(135deg, var(--gold-soft), var(--gold) 60%, #9c7b2f);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow: 0 2px 10px rgba(200,162,77,0.35);
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:18px;height:18px;}
+  .brand-name{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+  .brand-sub{
+    font-size:11px;
+    color: rgba(246,242,233,0.45);
+    font-family:'JetBrains Mono', monospace;
+    margin-top:1px;
+  }
+
+  /* ---------- tabs ---------- */
+  .view{ display:none; }
+  .view.active{ display:block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ---------- card ---------- */
+  .stage{
+    perspective: 1400px;
+    margin: 6px 0 6px;
+  }
+  .card{
+    position:relative;
+    width:100%;
+    aspect-ratio: 1.586 / 1;
+    transform-style: preserve-3d;
+    transition: transform .7s cubic-bezier(.2,.8,.2,1);
+    cursor:pointer;
+  }
+  .card.flipped{ transform: rotateY(180deg); }
+
+  .card-face{
+    position:absolute; inset:0;
+    border-radius: var(--radius);
+    backface-visibility:hidden;
+    overflow:hidden;
+    box-shadow: 0 18px 40px -12px rgba(0,0,0,0.55), 0 0 0 1px rgba(246,242,233,0.06);
+  }
+
+  .card-front{
+    background: linear-gradient(150deg, #FBF8F1 0%, var(--cream) 55%, #ECE5D3 100%);
+    color: var(--ink);
+    padding: 20px 22px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  /* foil stripe signature */
+  .card-front::before{
+    content:"";
+    position:absolute;
+    top:-40%; left:-10%;
+    width:60%; height:180%;
+    background: linear-gradient(115deg, transparent 30%, rgba(200,162,77,0.55) 45%, rgba(255,255,255,0.85) 50%, rgba(200,162,77,0.55) 55%, transparent 70%);
+    transform: rotate(8deg);
+    opacity:0.55;
+    pointer-events:none;
+    transition: transform 1.2s ease;
+  }
+  .card:hover .card-front::before{ transform: rotate(8deg) translateX(12%); }
+
+  .cf-top{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1;}
+  .cf-tag{ font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:0.14em; text-transform:uppercase; color:#8a7a55;}
+  .cf-coin{ width:24px;height:24px;border-radius:50%; background:linear-gradient(135deg,var(--gold-soft),var(--gold)); display:flex;align-items:center;justify-content:center;}
+  .cf-coin svg{ width:13px;height:13px; }
+
+  .cf-mid{ position:relative; z-index:1; }
+  .cf-name{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:22px; line-height:1.15; letter-spacing:-0.01em;}
+  .cf-title{ font-size:12.5px; color:#5b5744; margin-top:3px; font-weight:500;}
+  .cf-company{ font-size:11px; color:#8a7a55; margin-top:1px;}
+
+  .cf-bottom{ display:flex; justify-content:space-between; align-items:flex-end; position:relative; z-index:1;}
+  .cf-handle{ font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--ink); letter-spacing:0.02em;}
+  .cf-hint{ font-size:9px; color:#a0916c; text-transform:uppercase; letter-spacing:0.1em;}
+
+  .card-back{
+    background: linear-gradient(150deg, #FBF8F1 0%, var(--cream) 60%, #ECE5D3 100%);
+    color: var(--ink);
+    transform: rotateY(180deg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding: 16px;
+  }
+  .qr-wrap{
+    background:#fff;
+    padding:8px;
+    border-radius:10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .qr-wrap img{ display:block; width:118px; height:118px; }
+  .cb-handle{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink); }
+  .cb-caption{ font-size:10px; color:#8a7a55; text-transform:uppercase; letter-spacing:0.08em; }
+
+  .stage-hint{
+    text-align:center;
+    font-size:11px;
+    color: rgba(246,242,233,0.4);
+    margin: 12px 0 26px;
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- form ---------- */
+  .section-label{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color: rgba(246,242,233,0.85);
+    margin: 22px 0 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-label::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+  .field{ margin-bottom:12px; }
+  .field label{
+    display:block;
+    font-size:11px;
+    color: rgba(246,242,233,0.5);
+    margin-bottom:5px;
+    font-weight:500;
+  }
+  .field input{
+    width:100%;
+    background: rgba(246,242,233,0.05);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 12px;
+    color: var(--cream);
+    font-family:'Inter', sans-serif;
+    font-size:13.5px;
+    outline:none;
+    transition: border-color .15s, background .15s;
+  }
+  .field input::placeholder{ color: rgba(246,242,233,0.28); }
+  .field input:focus{
+    border-color: var(--accent);
+    background: rgba(246,242,233,0.08);
+  }
+
+  .row2{ display:flex; gap:10px; }
+  .row2 .field{ flex:1; }
+
+  .actions{ display:flex; gap:10px; margin-top:18px; }
+  .btn{
+    flex:1;
+    padding: 13px;
+    border-radius: 12px;
+    border:none;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition: transform .1s, opacity .15s;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: linear-gradient(135deg, var(--teal), #2c6b60); color:#EFF7F4; }
+  .btn-ghost{ background: transparent; border:1px solid var(--gold); color: var(--gold-soft); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  .toast{
+    position:fixed;
+    bottom: 96px;
+    left:50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--navy-card-2);
+    border:1px solid var(--line);
+    color: var(--cream);
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size:12.5px;
+    opacity:0;
+    transition: opacity .25s, transform .25s;
+    pointer-events:none;
+    max-width: 360px;
+    z-index:50;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- connections view ---------- */
+  .conn-empty{
+    text-align:center;
+    padding: 50px 20px;
+    color: rgba(246,242,233,0.4);
+    font-size:13px;
+  }
+  .conn-empty svg{ width:36px;height:36px; margin-bottom:12px; opacity:0.5; }
+
+  .conn-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background: var(--navy-card);
+    border:1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom:10px;
+  }
+  .conn-avatar{
+    width:38px;height:38px;border-radius:50%;
+    background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:14px; color:var(--ink);
+    flex-shrink:0;
+  }
+  .conn-name{ font-weight:600; font-size:13.5px; }
+  .conn-meta{ font-size:11px; color: rgba(246,242,233,0.45); font-family:'JetBrains Mono', monospace; margin-top:2px; }
+
+  .scan-btn{
+    width:100%;
+    padding: 13px;
+    border-radius: 12px;
+    border:1px dashed rgba(246,242,233,0.25);
+    background: transparent;
+    color: rgba(246,242,233,0.6);
+    font-size:13px;
+    margin-bottom:16px;
+    cursor:pointer;
+  }
+  .scan-btn:hover{ border-color: var(--gold); color: var(--gold-soft); }
+
+  .scan-feedback{
+    font-size:12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .scan-feedback.ok{ background: rgba(58,133,119,0.15); color: #8FCFC0; border:1px solid rgba(58,133,119,0.3); }
+  .scan-feedback.err{ background: rgba(180,99,107,0.15); color: #E5A0A0; border:1px solid rgba(180,99,107,0.3); }
+
+  /* ---------- settings view ---------- */
+  .swatches{ display:flex; gap:12px; margin: 4px 0 24px; }
+  .swatch{
+    width:42px;height:42px;border-radius:50%;
+    border: 2px solid transparent;
+    cursor:pointer;
+    position:relative;
+  }
+  .swatch.active{ border-color: var(--cream); }
+  .swatch[data-c="gold"]{ background:linear-gradient(135deg,#E4C77A,#C8A24D); }
+  .swatch[data-c="teal"]{ background:linear-gradient(135deg,#5CB3A2,#3A8577); }
+  .swatch[data-c="rose"]{ background:linear-gradient(135deg,#E5A0A0,#B4636B); }
+  .swatch[data-c="ice"]{ background:linear-gradient(135deg,#9FC2E0,#5E8FB8); }
+
+  .settings-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    font-size:13.5px;
+  }
+  .settings-row .lbl{ color: rgba(246,242,233,0.85); }
+  .settings-row .val{ color: rgba(246,242,233,0.4); font-size:12px; font-family:'JetBrains Mono', monospace; }
+
+  /* ---------- tab bar ---------- */
+  .tabbar{
+    position:fixed;
+    bottom:0; left:0; right:0;
+    display:flex;
+    justify-content:center;
+  }
+  .tabbar-inner{
+    width:100%;
+    max-width:400px;
+    background: rgba(22,27,51,0.92);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    display:flex;
+    padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  }
+  .tab{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    background:none;
+    border:none;
+    color: rgba(246,242,233,0.4);
+    font-size:10.5px;
+    font-family:'Inter', sans-serif;
+    padding:6px 4px;
+    cursor:pointer;
+  }
+  .tab svg{ width:20px;height:20px; }
+  .tab.active{ color: var(--gold-soft); }
+
+  @media (prefers-reduced-motion: reduce){
+    .card, .card-front::before, .view, .toast{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><text x="5" y="17" font-family="Space Grotesk" font-weight="700" font-size="15" fill="#14151A">π</text></svg>
+    </div>
+    <div>
+      <div class="brand-name">PiCard</div>
+      <div class="brand-sub">tap to connect</div>
+    </div>
+  </div>
+
+  <!-- ===================== MY CARD VIEW ===================== -->
+  <div class="view active" id="view-card">
+
+    <div class="stage">
+      <div class="card" id="theCard" onclick="flipCard()">
+        <div class="card-face card-front">
+          <div class="cf-top">
+            <span class="cf-tag" id="cfTag">Pi Network</span>
+            <div class="cf-coin"><svg viewBox="0 0 24 24"><text x="6" y="17" font-family="Space Grotesk" font-weight="700" font-size="14" fill="#14151A">π</text></svg></div>
+          </div>
+          <div class="cf-mid">
+            <div class="cf-name" id="cfName">Your Name</div>
+            <div class="cf-title" id="cfTitle">Your role</div>
+            <div class="cf-company" id="cfCompany"></div>
+          </div>
+          <div class="cf-bottom">
+            <span class="cf-handle" id="cfHandle">@handle</span>
+            <span class="cf-hint">flip →</span>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="qr-wrap"><img id="qrImg" src="" alt="QR code"></div>
+          <div class="cb-handle" id="cbHandle">@handle</div>
+          <div class="cb-caption">Scan to save contact</div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-hint">Tap the card to flip · long-press to share</div>
+
+    <div class="section-label">Your details</div>
+
+    <div class="field">
+      <label for="inName">Full name</label>
+      <input id="inName" type="text" placeholder="Alex Rivera" oninput="updateCard()">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="inTitle">Role</label>
+        <input id="inTitle" type="text" placeholder="Product Designer" oninput="updateCard()">
+      </div>
+      <div class="field">
+        <label for="inCompany">Company</label>
+        <input id="inCompany" type="text" placeholder="Optional" oninput="updateCard()">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="inHandle">Pi username</label>
+      <input id="inHandle" type="text" placeholder="alexrivera" oninput="updateCard()">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="inPhone">Phone</label>
+        <input id="inPhone" type="tel" placeholder="Optional" oninput="updateCard()">
+      </div>
+      <div class="field">
+        <label for="inEmail">Email</label>
+        <input id="inEmail" type="email" placeholder="Optional" oninput="updateCard()">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveCard()">Save card</button>
+      <button class="btn btn-ghost" onclick="downloadQR()">Download QR</button>
+    </div>
+  </div>
+
+  <!-- ===================== CONNECTIONS VIEW ===================== -->
+  <div class="view" id="view-connections">
+    <div class="section-label">Connections</div>
+
+    <button class="scan-btn" onclick="document.getElementById('qrFileInput').click()">
+      ⬆ Upload a QR code
+    </button>
+    <input type="file" id="qrFileInput" accept="image/*" capture="environment" style="display:none" onchange="handleQrUpload(event)">
+
+    <div id="scanFeedback"></div>
+    <div id="connList"></div>
+  </div>
+
+  <!-- ===================== SETTINGS VIEW ===================== -->
+  <div class="view" id="view-settings">
+    <div class="section-label">Card color</div>
+    <div class="swatches">
+      <div class="swatch active" data-c="gold" onclick="setAccent('gold', this)"></div>
+      <div class="swatch" data-c="teal" onclick="setAccent('teal', this)"></div>
+      <div class="swatch" data-c="rose" onclick="setAccent('rose', this)"></div>
+      <div class="swatch" data-c="ice" onclick="setAccent('ice', this)"></div>
+    </div>
+
+    <div class="section-label">About</div>
+    <div class="settings-row"><span class="lbl">App</span><span class="val">PiCard v1.0</span></div>
+    <div class="settings-row"><span class="lbl">Network</span><span class="val">Pi Mainnet</span></div>
+    <div class="settings-row"><span class="lbl">Card status</span><span class="val" id="cardStatus">Draft</span></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="tabbar">
+    <div class="tabbar-inner">
+      <button class="tab active" data-tab="card" onclick="showTab('card')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M3 10h18"/></svg>
+        Card
+      </button>
+      <button class="tab" data-tab="connections" onclick="showTab('connections')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.7 13.8c2.4.2 4.3 2.1 4.3 5.2"/></svg>
+        Connections
+      </button>
+      <button class="tab" data-tab="settings" onclick="showTab('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 000-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 00-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 00-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.6 7.6 0 000 3l-2 1.5 2 3.4 2.3-.9c.8.6 1.7 1.1 2.6 1.5l.5 2.6h4l.5-2.6c.9-.4 1.8-.9 2.6-1.5l2.3.9 2-3.4-2-1.5z"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- in-memory app state (no persistence layer — see note at bottom) ----------
+  let connections = [];
+  let flipped = false;
+
+  function esc(s){ return (s || "").toString(); }
+
+  function buildVCard(){
+    const name = document.getElementById('inName').value || "Your Name";
+    const title = document.getElementById('inTitle').value || "";
+    const company = document.getElementById('inCompany').value || "";
+    const handle = document.getElementById('inHandle').value || "handle";
+    const phone = document.getElementById('inPhone').value || "";
+    const email = document.getElementById('inEmail').value || "";
+
+    let vcard = "BEGIN:VCARD\nVERSION:3.0\n";
+    vcard += "FN:" + name + "\n";
+    if(title) vcard += "TITLE:" + title + "\n";
+    if(company) vcard += "ORG:" + company + "\n";
+    if(phone) vcard += "TEL:" + phone + "\n";
+    if(email) vcard += "EMAIL:" + email + "\n";
+    vcard += "NOTE:Pi Network @" + handle + "\n";
+    vcard += "END:VCARD";
+    return vcard;
+  }
+
+  function updateCard(){
+    const name = document.getElementById('inName').value || "Your Name";
+    const title = document.getElementById('inTitle').value || "Your role";
+    const company = document.getElementById('inCompany').value || "";
+    const handle = document.getElementById('inHandle').value || "handle";
+
+    document.getElementById('cfName').textContent = name;
+    document.getElementById('cfTitle').textContent = title;
+    document.getElementById('cfCompany').textContent = company;
+    document.getElementById('cfHandle').textContent = "@" + handle;
+    document.getElementById('cbHandle').textContent = "@" + handle;
+
+    const data = encodeURIComponent(buildVCard());
+    document.getElementById('qrImg').src =
+      "https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=6&data=" + data;
+  }
+
+  function flipCard(){
+    flipped = !flipped;
+    document.getElementById('theCard').classList.toggle('flipped', flipped);
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function saveCard(){
+    const name = document.getElementById('inName').value;
+    if(!name){ showToast("Add your name first"); return; }
+    document.getElementById('cardStatus').textContent = "Saved";
+    showToast("Card saved");
+  }
+
+  function downloadQR(){
+    const img = document.getElementById('qrImg');
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = "picard-qr.png";
+    a.target = "_blank";
+    a.click();
+    showToast("Opening QR image…");
+  }
+
+  function showTab(name){
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  }
+
+  function renderConnections(){
+    const list = document.getElementById('connList');
+    if(connections.length === 0){
+      list.innerHTML = `<div class="conn-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.7 13.8c2.4.2 4.3 2.1 4.3 5.2"/></svg>
+        No connections yet.<br>Scan someone's card to add them.
+      </div>`;
+      return;
+    }
+    list.innerHTML = connections.map(c => `
+      <div class="conn-item">
+        <div class="conn-avatar">${c.initial}</div>
+        <div>
+          <div class="conn-name">${c.name}</div>
+          <div class="conn-meta">@${c.handle} · ${c.role}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function parseVCard(text){
+    const get = (tag) => {
+      const m = text.match(new RegExp(tag + ":(.*)"));
+      return m ? m[1].trim() : "";
+    };
+    const name = get("FN") || "Unknown";
+    const org = get("ORG");
+    let role = org || "Pi Network contact";
+    const noteMatch = text.match(/NOTE:.*@([\w.-]+)/);
+    const handle = noteMatch ? noteMatch[1] : "unknown";
+    return { name, role, handle };
+  }
+
+  function showScanFeedback(msg, ok){
+    const el = document.getElementById('scanFeedback');
+    el.innerHTML = `<div class="scan-feedback ${ok ? 'ok' : 'err'}">${msg}</div>`;
+    setTimeout(() => { el.innerHTML = ""; }, 4000);
+  }
+
+  function handleQrUpload(event){
+    const file = event.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if(typeof jsQR === "undefined"){
+          showScanFeedback("QR reader failed to load — check your connection and try again.", false);
+          return;
+        }
+
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if(code && code.data){
+          if(code.data.includes("BEGIN:VCARD")){
+            const person = parseVCard(code.data);
+            connections.push({...person, initial: person.name[0].toUpperCase()});
+            renderConnections();
+            showScanFeedback("Added " + person.name + " to your connections.", true);
+          } else {
+            showScanFeedback("That QR code isn't a PiCard contact card.", false);
+          }
+        } else {
+          showScanFeedback("Couldn't read a QR code in that image. Try a clearer photo.", false);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  }
+
+  function setAccent(name, el){
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    const map = {
+      gold:  {a:"#C8A24D", tag:"Pi Network"},
+      teal:  {a:"#3A8577", tag:"Pi Network"},
+      rose:  {a:"#B4636B", tag:"Pi Network"},
+      ice:   {a:"#5E8FB8", tag:"Pi Network"}
+    };
+    document.documentElement.style.setProperty('--accent', map[name].a);
+  }
+
+  // init
+  updateCard();
+  renderConnections();
+</script>
+
+</body>
+</html>

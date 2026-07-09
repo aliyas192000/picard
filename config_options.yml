@@ -1,0 +1,18 @@
+# config_options.yml — install form Pi Desktop renders before running PiCard.
+#
+# PiCard is currently a pure static site: no backend, no secrets, nothing
+# read from environment variables at runtime. So there's nothing genuine to
+# put in "fields" yet — adding fake ones (like a fake admin password) would
+# render an input that does nothing when filled in, which is worse than no
+# form at all. Kept to just the required plumbing below.
+title: PiCard
+description: Digital business cards for Pi Network — no configuration needed to install.
+output_file: .env
+
+fixed_values:
+  - name: UID
+    detect: uid
+  - name: GID
+    detect: gid
+
+fields: []
