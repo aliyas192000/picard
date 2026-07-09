@@ -1,9 +1,6 @@
-# docker-compose.yml — what Pi Desktop actually runs.
-# Requires a published image — build & push using the Dockerfile in this
-# folder first, then update the "image:" line below to match.
 services:
   web:
     image: ghcr.io/aliyas192000/picard:latest
     restart: unless-stopped
     ports:
-      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:8090:8080'
